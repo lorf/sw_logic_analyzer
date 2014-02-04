@@ -8,7 +8,9 @@
 
 /* the device's vendor and product id */
 #define XMOS_VID 0x20b1
-#define JTAG_PID 0xf7d1
+/*#define JTAG_PID 0xf7d1*/
+#define STARTKIT_PID 0xf7d3
+#define LOGIC_ANALYZER_PID 0x1061
 
 /* the device's endpoints */
 #define EP_IN 0x82
@@ -24,7 +26,7 @@ static usb_dev_handle *saveddevh = NULL;
 #include <signal.h>
 #include <pthread.h>
 static void (*ofunc) (int);
-#include "libusb.h"
+#include <libusb-1.0/libusb.h>
 static libusb_device_handle *devh = NULL;
 static libusb_device_handle *listdevh = NULL;
 static libusb_device_handle *saveddevh = NULL;
@@ -50,6 +52,7 @@ enum loader_cmd_type {
   LOADER_CMD_JUMP_ACK
 };
 
+#define L1_JTAG_BIN_FILE    "logic_analyzer_firmware.bin"
 char l1_jtag_bin[65536];
 
 static void loader_to_jtag(unsigned int firmware_version) {
@@ -65,7 +68,7 @@ static void loader_to_jtag(unsigned int firmware_version) {
   saveddevh = devh;
   devh = listdevh;
 
-  fd = open("image_n0c0.bin", 0);
+  fd = open(L1_JTAG_BIN_FILE, 0);
   l1_jtag_bin_len = read(fd, l1_jtag_bin, 65536);
 
   memset(cmd_buf, 0, LOADER_BUF_SIZE);
@@ -119,7 +122,7 @@ static usb_dev_handle *open_dev(unsigned int id) {
 
   for(bus = usb_get_busses(); bus; bus = bus->next) {
     for(dev = bus->devices; dev; dev = dev->next) {
-      if(dev->descriptor.idVendor == XMOS_VID && dev->descriptor.idProduct == JTAG_PID) {
+      if(dev->descriptor.idVendor == XMOS_VID && dev->descriptor.idProduct == LOGIC_ANALYZER_PID) {
         if (i == id) {
           return usb_open(dev);
         }
@@ -146,7 +149,7 @@ static void find_connected_devices(void) {
   
   for (bus = usb_get_busses(); bus; bus = bus->next) {
     for (dev = bus->devices; dev; dev = dev->next) {
-      if (dev->descriptor.idVendor == XMOS_VID && dev->descriptor.idProduct == JTAG_PID && !(dev->descriptor.bcdDevice & 0xff00)) {
+      if (dev->descriptor.idVendor == XMOS_VID && dev->descriptor.idProduct == STARTKIT_PID && !(dev->descriptor.bcdDevice & 0xff00)) {
         // Switch loaders to become JTAG devices
         listdevh = usb_open(dev);
         usb_set_configuration(listdevh, 1);
@@ -166,7 +169,7 @@ static void find_connected_devices(void) {
 
   for (bus = usb_get_busses(); bus; bus = bus->next) {
     for (dev = bus->devices; dev; dev = dev->next) {
-      if (dev->descriptor.idVendor == XMOS_VID && dev->descriptor.idProduct == JTAG_PID && (dev->descriptor.bcdDevice & 0xff00)) {
+      if (dev->descriptor.idVendor == XMOS_VID && dev->descriptor.idProduct == LOGIC_ANALYZER_PID && (dev->descriptor.bcdDevice & 0xff00)) {
         char serial_number[64];
         // Default to XTAG-2
         sprintf(jtag_devices.device_records[jtag_devices.numDevices].internalDevName, "XTAG2");
@@ -282,7 +285,7 @@ static void find_connected_devices() {
   while ((dev = devs[i++]) != NULL) {
     struct libusb_device_descriptor desc;
     libusb_get_device_descriptor(dev, &desc);
-    if (desc.idVendor == XMOS_VID && desc.idProduct == JTAG_PID && !(desc.bcdDevice & 0xff00)) {
+    if (desc.idVendor == XMOS_VID && desc.idProduct == STARTKIT_PID && !(desc.bcdDevice & 0xff00)) {
       if (libusb_open(dev, &listdevh) < 0) {
         libusb_free_device_list(devs, 1);
         return;
@@ -307,7 +310,7 @@ static void find_connected_devices() {
   while ((dev = devs[i++]) != NULL) {
     struct libusb_device_descriptor desc;
     libusb_get_device_descriptor(dev, &desc);
-    if (desc.idVendor == XMOS_VID && desc.idProduct == JTAG_PID) {
+    if (desc.idVendor == XMOS_VID && desc.idProduct == LOGIC_ANALYZER_PID) {
       char serial_number[64];
       memset(serial_number, 0, 64);
 
@@ -386,7 +389,7 @@ static int find_xmos_device(unsigned int id) {
   while ((dev = devs[i++]) != NULL) {
     struct libusb_device_descriptor desc;
     libusb_get_device_descriptor(dev, &desc);
-    if (desc.idVendor == XMOS_VID && desc.idProduct == JTAG_PID) {
+    if (desc.idVendor == XMOS_VID && desc.idProduct == LOGIC_ANALYZER_PID) {
       if (found == id) {
         if (libusb_open(dev, &devh) < 0) {
           return -1;
