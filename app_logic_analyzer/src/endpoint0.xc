@@ -9,7 +9,9 @@
 #include <safestring.h>
 #include "xud.h"
 #include "usb.h"
-#include "DescriptorRequests.h"
+#include "usb_defs.h"
+#include "usb_device.h"
+/*#include "DescriptorRequests.h"*/
 
 #define XUD_DESC_STR_USENG     0x0409 // US English
 
@@ -37,6 +39,7 @@
 }
 
                                     
+#if 0
 /* Device Qualifier Descriptor */
 #define DESC_DEVQUAL \
 { \
@@ -51,6 +54,7 @@
     0x01,                            /* 8  bNumConfigurations : Number of possible configs */ \
     0x00                             /* 9  bReserved (must be zero) */ \
 }
+#endif
 
 #define DESC_DEBUG \
 { \
@@ -115,6 +119,7 @@ static unsigned char cfgDesc[] =
   '\0' \
 }
 
+#if 0
 /* OtherSpeed Configuration Descriptor */
 /* TODO: Move to DeviceDescriptors.h */
 uint8 oSpeedCfgDesc[] =
@@ -140,13 +145,14 @@ uint8 oSpeedCfgDesc[] =
     0x00,                              /* 8 iInterface : Unused. (field size 1 bytes) */
 
 };
+#endif
 
 
 //#define STRINGER(x) PRODUCT#x
 /* Standard descriptors */
 static unsigned char devDesc[] = DESC_DEVICE;
 //static unsigned char cfgDesc[] = DESC_CONFIG;
-static unsigned char devQualDesc[] = DESC_DEVQUAL;
+/*static unsigned char devQualDesc[] = DESC_DEVQUAL;*/
 //static unsigned char debugDesc[] = DESC_DEBUG;
 
 /* String descriptors */
@@ -162,13 +168,14 @@ static unsigned char strDescs[][40] =
 
 
 
-void Endpoint0( chanend c_ep0_out, chanend c_ep0_in)
+void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test)
 {
     unsigned char buffer[1024];
-    SetupPacket sp;
+    USB_SetupPacket_t sp;
+    XUD_BusSpeed usbBusSpeed;
 
-    XUD_ep ep0_out = XUD_Init_Ep(c_ep0_out);
-    XUD_ep ep0_in  = XUD_Init_Ep(c_ep0_in);
+    XUD_ep ep0_out = XUD_InitEp(c_ep0_out);
+    XUD_ep ep0_in  = XUD_InitEp(c_ep0_in);
 
     /* Copy langIDs string desc into string[0] */
     /* TODO: Macro? */
@@ -176,24 +183,30 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in)
  
     while(1)
     {
-        /* Do standard enumeration requests */ 
+        /* Returns 0 on success, < 0 for USB RESET */
+        int retVal = USB_GetSetupPacket(ep0_out, ep0_in, sp);
 
-        int retVal = DescriptorRequests(ep0_out, ep0_in, devDesc, sizeof(devDesc), cfgDesc, sizeof(cfgDesc), devQualDesc, sizeof(devQualDesc), oSpeedCfgDesc, sizeof(oSpeedCfgDesc), strDescs, sp);
-        if (retVal == 1) {
-            /* Request not covered by XUD_DoEnumReqs() so decode ourselves */
+        if (retVal == 0) {
+            /*
+             * Set retVal to non-zero, we expect it to get set to 0
+             * if a request is handled
+             */
+            retVal = 1;
+
             switch(sp.bmRequestType.Type) {
-            case BM_REQTYPE_TYPE_STANDARD:
+            case USB_BM_REQTYPE_TYPE_STANDARD:
                 switch(sp.bmRequestType.Recipient) {
-                case BM_REQTYPE_RECIP_INTER:
+                case USB_BM_REQTYPE_RECIP_INTER:
                     switch(sp.bRequest) {
                         /* Set Interface */
-                    case SET_INTERFACE:
+                    case USB_SET_INTERFACE:
                         /* TODO: Set the interface */
                         /* No data stage for this request, just do data stage */
-                        retVal = XUD_DoSetRequestStatus(ep0_in, 0);
+                        retVal = XUD_DoSetRequestStatus(ep0_in);
                         break;
                         /* Get descriptor */ 
-                    case GET_DESCRIPTOR:
+#if 0
+                    case USB_GET_DESCRIPTOR:
                         /* Inspect which descriptor require (high byte of wValue) */ 
                         switch( sp.wValue & 0xff00 ) {
                             /* HID Report Descriptor */
@@ -206,40 +219,44 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in)
                             break;
                         }
                         break;
+#endif
                     }
                     break;
                     /* Recipient: Device */
-                case BM_REQTYPE_RECIP_DEV:
+                case USB_BM_REQTYPE_RECIP_DEV:
                     /* Standard Device requests (8) */
                     switch( sp.bRequest ) {      
                         /* TODO Check direction */
                         /* Standard request: SetConfiguration */
-                    case SET_CONFIGURATION:
+                    case USB_SET_CONFIGURATION:
                         /* TODO: Set the config */
                         /* No data stage for this request, just do status stage */
-                        retVal = XUD_DoSetRequestStatus(ep0_in,  0);
+                        retVal = XUD_DoSetRequestStatus(ep0_in);
                         break;
-                    case GET_CONFIGURATION:
+                    case USB_GET_CONFIGURATION:
                         buffer[0] = 1;
                         retVal = XUD_DoGetRequest(ep0_out, ep0_in, buffer, 1, sp.wLength);
                         break; 
                         
                         /* Set Device Address: This is a unique set request. */
-                    case SET_ADDRESS:
+                    case USB_SET_ADDRESS:
                         /* Status stage: Send a zero length packet */
-                        retVal = XUD_SetBuffer_ResetPid(ep0_in,  buffer, 0, PIDn_DATA1);
-                        /* TODO We should wait until ACK is received for status stage before changing address */
-                        //XUD_Sup_Delay(50000);
-                        {
-                            timer t;
-                            unsigned time;
-                            t :> time;
-                            t when timerafter(time+50000) :> void;
+                        retVal = XUD_DoSetRequestStatus(ep0_in);
+                        if (retVal >= 0) {
+                            /* Note: Really we should wait until ACK is received for status stage before changing address
+                             * We will just wait some time... */
+                            {
+                                timer t;
+                                unsigned time;
+                                t :> time;
+                                t when timerafter(time+50000) :> void;
+                            }
+                            /* Set device address in XUD */
+                            XUD_SetDevAddr(sp.wValue);
+                            retVal = 0;
                         }
-                        /* Set device address in XUD */
-                        XUD_SetDevAddr(sp.wValue);
                         break;
-                    case GET_STATUS:
+                    case USB_GET_STATUS:
 
                         buffer[0] = 0; // bus powered
                         buffer[1] = 0; // remote wakeup not supported
@@ -247,24 +264,45 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in)
                         retVal = XUD_DoGetRequest(ep0_out, ep0_in, buffer,  2, sp.wLength);
                         break;
 
+#if 0
                     default:
                         XUD_Error("Unknown device request");
                         break;
+#endif
                     }  
                     break;
+#if 0
                 default: 
                     /* Got a request to a recipient we didn't recognise... */ 
                     //XUD_Error("Unknown Recipient"); 
                     break;
+#endif
                 }
                 break;
+#if 0
             default:
                 //printstr("ERR: Unknown request: ");
                 break;
+#endif
             }
-        } /* if XUD_DoEnumReqs() */
+        }
+
+        /* If we haven't handled the request about, 
+         * then do standard enumeration requests  */
+        if (retVal > 0) {
+
+            /* Returns  0 if handled okay,
+             *          1 if request was not handled (STALLed),
+             *         -1 for USB Reset */
+            retVal = USB_StandardRequests(ep0_out, ep0_in, devDesc,
+                    sizeof(devDesc), cfgDesc, sizeof(cfgDesc),
+                    null, 0, null, 0, strDescs, sp, c_usb_test,
+                    usbBusSpeed);
+        }
+
+        /* USB bus reset detected, reset EP and get new bus speed */
         if (retVal < 0) {
-            XUD_ResetEndpoint(ep0_in, ep0_out);
+            usbBusSpeed = XUD_ResetEndpoint(ep0_in, ep0_out);
         }
   }
 

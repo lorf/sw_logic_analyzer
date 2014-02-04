@@ -26,9 +26,9 @@ XUD_EpType epTypeTableIn[3] = {   XUD_EPTYPE_CTL,
 /* USB Port declarations */
 out port p_usb_rst       = XS1_PORT_1I; // XDK PORT_1B, XTR: 1k
 clock    clk             = XS1_CLKBLK_3;
-clock    clkPins         = XS1_CLKBLK_4;
+clock    clkPins         = XS1_CLKBLK_2;    // Was XS1_CLKBLK_4 on XTAG2, but it is used in XUD.
 
-void Endpoint0(chanend c_ep0_out, chanend c_ep0_in);
+void Endpoint0(chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test);
 
 #define BUF_WORDS 512  // Buffer length
 #define NUM_BUFFERS 16
@@ -88,7 +88,7 @@ void endpoint2(chanend to_host, chanend to_uart) {
     unsigned char buf_num;
     int datalength;
 
-    XUD_ep ep_to_host = XUD_Init_Ep(to_host);
+    XUD_ep ep_to_host = XUD_InitEp(to_host);
     
     outuint(to_uart, 1);
     while (1) {
@@ -106,8 +106,8 @@ void endpoint1_configuration(chanend from_host, chanend to_host, clock clk) {
     unsigned char buffer[512];
     int div;
 
-    XUD_ep ep_from_host = XUD_Init_Ep(from_host);
-    XUD_ep ep_to_host = XUD_Init_Ep(to_host);
+    XUD_ep ep_from_host = XUD_InitEp(from_host);
+    XUD_ep ep_to_host = XUD_InitEp(to_host);
     
     while (1) {
         int datalength = XUD_GetBuffer(ep_from_host, buffer);
@@ -139,6 +139,7 @@ void endpoint1_configuration(chanend from_host, chanend to_host, clock clk) {
 static int lookuplow[256];
 static int lookuphigh[256];
 
+#if 0
 /*
  * These port declarations are specific to the XTAG2, the pins on the XK-1
  * are pins 0-7 in order, starting at pin 3 on the connector, follow the
@@ -154,6 +155,20 @@ buffered in port:8 od = XS1_PORT_1K; // Pin 11 on the connector
 buffered in port:8 oc = XS1_PORT_1B; // Pin 13 on the connector
 buffered in port:8 ob = XS1_PORT_1M; // Pin 15 on the connector
 buffered in port:8 oa = XS1_PORT_1J; // Pin 17 on the connector
+#endif
+
+/*
+ * These port declarations are specific to the startKIT.
+ */
+buffered in port:8 oh = XS1_PORT_1L; // Pin O (#9) on TP1
+buffered in port:8 og = XS1_PORT_1G; // Pin K (#7) on TP1
+buffered in port:8 of = XS1_PORT_1F; // Pin S (#6) on TP1
+buffered in port:8 oe = XS1_PORT_1E; // Pin I (#5) on TP1
+
+buffered in port:8 od = XS1_PORT_1D; // Pin DI1 on J5
+buffered in port:8 oc = XS1_PORT_1C; // Pin DI0 on J5
+buffered in port:8 ob = XS1_PORT_1B; // Pin A16 on J1 (AKA Slice connector)
+buffered in port:8 oa = XS1_PORT_1A; // Pin B14 on J1 (AKA Slice connector)
 
 extern void sampler(buffered in port:8 a, buffered in port:8 b, buffered in port:8 c, buffered in port:8 d, buffered in port:8 e, buffered in port:8 f, buffered in port:8 g, buffered in port:8 h, const int lookuplow[256], const int lookuphigh[256], streaming chanend k);
 
@@ -194,8 +209,9 @@ int main() {
     par {
         XUD_Manager( c_ep_out, 2, c_ep_in, 3,
                      null, epTypeTableOut, epTypeTableIn,
-                     p_usb_rst, clk, -1, XUD_SPEED_HS, null);  
-        Endpoint0( c_ep_out[0], c_ep_in[0]);
+                     p_usb_rst, clk, -1, XUD_SPEED_HS, null,
+                     XUD_PWR_BUS);
+        Endpoint0( c_ep_out[0], c_ep_in[0], null);
         sampler(oa,ob,oc,od,oe,of,og,oh,lookuplow, lookuphigh, c);
         buffer_thread(usb_to_uart, c);
         endpoint2(c_ep_in[2], usb_to_uart);
