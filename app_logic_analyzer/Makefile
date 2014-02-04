@@ -1,7 +1,8 @@
-TARGET = XTAG2
+TARGET = XS1-U16A-128-FB217-C10
+#TARGET = XS1-U8A-64-FB96-C5
 XCC_FLAGS = -O2 -DUSB_CORE=0 -g
-APP_NAME =
-USED_MODULES = module_xud module_usb_shared
+APP_NAME = 
+USED_MODULES = module_usb_device module_usb_shared module_xud
 VERBOSE = 0
 
 #=============================================================================
