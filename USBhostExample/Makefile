@@ -1,9 +1,9 @@
 APP_NAME= logic_analyzer
 
-CPPFLAGS +=	-Wall
+CXXFLAGS +=	-Wall
 LDLIBS +=	-lusb-1.0
-CPP =		g++
-LD =		${CPP}
+CXX =		g++
+LD =		${CXX}
 
 all: ${APP_NAME} logic_analyzer_firmware.bin
 
@@ -14,7 +14,7 @@ logic_analyzer_firmware.bin: ../app_logic_analyzer/bin/app_logic_analyzer.xe
 	rm -rf tempdir
 
 %.o: %.cpp
-	${CPP} ${CPPFLAGS} -c $<
+	${CXX} ${CXXFLAGS} -c $<
 
 device_if.o: device_if.h
 main.o: device_if.h
