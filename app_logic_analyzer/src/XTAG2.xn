@@ -3,12 +3,28 @@
   <Type>Board</Type>
 
   <Declarations>
-    <Declaration>core stdcore[1]</Declaration>
+    <Declaration>tileref tile[1]</Declaration>
   </Declarations>
 
   <Nodes>
     <Node id="0" Type="XS1-L1A-TQ128" oscillator="13Mhz" systemfrequency="400MHz" referencefrequency="100MHz">
-      <Core Number="0" Reference="stdcore[0]"/>
+      <Tile Number="0" Reference="tile[0]">
+        <!-- This part is taken from
+             sc_usb_device/app_hid_mouse_demo/src/xr-usb-audio-2.0.xn
+             from sc_usb_device.zip(1.0.1).zip downloaded from
+             https://www.xmos.com/en/published/scusbdevicezip .
+             This is needed to compile with recent module_xud from
+             the same zip. Not tested on the real HW. -->
+        <!-- XUD Ports -->
+        <Port Location="XS1_PORT_1H"  Name="PORT_USB_CLK"/>
+        <Port Location="XS1_PORT_1N"  Name="PORT_USB_FLAG0"/>
+        <Port Location="XS1_PORT_1O"  Name="PORT_USB_FLAG1"/>
+        <Port Location="XS1_PORT_1P"  Name="PORT_USB_FLAG2"/>
+        <Port Location="XS1_PORT_8A"  Name="PORT_USB_TXD"/>
+        <Port Location="XS1_PORT_8B"  Name="PORT_USB_RXD"/>
+        <Port Location="XS1_PORT_8C"  Name="PORT_USB_REG_WRITE"/>
+        <Port Location="XS1_PORT_8D"  Name="PORT_USB_REG_READ"/>
+      </Tile>
     </Node>
   </Nodes>
 
