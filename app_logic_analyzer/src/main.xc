@@ -57,7 +57,7 @@ XUD_EpType epTypeTableIn[3] = {   XUD_EPTYPE_CTL,
 clock clk_sampling = XS1_CLKBLK_2;  /* Was XS1_CLKBLK_4, but it is used
                                      * in XUD on U-series chips. */
 
-#if defined(TARGET_XTAG2)
+#if defined(TARGET_BOARD_XTAG2)
 
 /*
  * These port declarations are specific to the XTAG2, the pins on the XK-1
@@ -79,7 +79,7 @@ buffered in port:8 sample_pins[8] = {
     XS1_PORT_1J, // Pin 17 on the connector
 };
 
-#elif defined(TARGET_STARTKIT)
+#elif defined(TARGET_BOARD_STARTKIT)
 
 /*
  * These port declarations are specific to the startKIT.
