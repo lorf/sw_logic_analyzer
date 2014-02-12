@@ -14,14 +14,9 @@
 #include "usb.h"
 #include "sampler.h"
 #include "endpoint0.h"
-
-#define USB_HOST_BUF_WORDS  128
-#define USB_HOST_BUF_SIZE   (USB_HOST_BUF_WORDS * 4)
-
-/* Define sizes for shared buffer */
-#define SHARED_BUFFER_SIZE  USB_HOST_BUF_SIZE  /* Buffer length in bytes */
-#define NUM_SHARED_BUFFERS  16
 #include "shared_buffer.h"
+
+#define USB_HOST_BUF_LEN    512
 
 #define XMOSSK_LA_IMPL
 #include "xmossk_la.h"
@@ -132,7 +127,7 @@ void buffer_thread(chanend ce_xfer_thread, streaming chanend sce_sampler) {
         case sce_sampler :> sample_val:
             shared_buffers_int[buf_num][write_ptr] = sample_val;
             write_ptr++;
-            if (write_ptr >= SHARED_BUFFER_SIZE/4) {
+            if (write_ptr >= SHARED_BUFFER_LEN/4) {
                 /* Buffer is filled */
                 if (asked) {
                     /* Notify USB output thread */
@@ -162,7 +157,7 @@ void endpoint2_usb_out(chanend ce_to_host, chanend ce_cmd) {
         /* Receive buffer number from buffer thread */
         inuchar_byref(ce_cmd, buf_num);
         /* Output buffer to the host. */
-        datalength = XUD_SetBuffer(ep_to_host, shared_buffers_char[(int)buf_num], USB_HOST_BUF_WORDS*4);
+        datalength = XUD_SetBuffer(ep_to_host, shared_buffers_char[(int)buf_num], SHARED_BUFFER_LEN);
         /* Send sync to buffer thread */
         outuint(ce_cmd, 1);
 
@@ -178,7 +173,7 @@ void endpoint2_usb_out(chanend ce_to_host, chanend ce_cmd) {
  */
 void endpoint1_cmd(chanend ce_from_host, chanend ce_to_host, clock clk_sampling) {
     /* XXX: do we need whole 512 bytes buffer? */
-    unsigned char buffer[USB_HOST_BUF_SIZE];
+    unsigned char buffer[USB_HOST_BUF_LEN];
     int div;
 
     XUD_ep ep_from_host = XUD_InitEp(ce_from_host);
