@@ -73,10 +73,13 @@ static void loader_to_jtag(unsigned int firmware_version) {
 
   memset(cmd_buf, 0, LOADER_BUF_SIZE);
 
+#if 0
+  /* LOADER_CMD_GET_VERSION seems to be unimplemented on startKIT */
   cmd_buf[0] = LOADER_CMD_GET_VERSION;
 
   device_write((char *)cmd_buf, 4, 1000);
   device_read((char *)cmd_buf, 8, 1000);
+#endif
 
   address = 0x10000;
   block_size = LOADER_BUF_SIZE - 12; 
