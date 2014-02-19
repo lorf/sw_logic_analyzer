@@ -41,3 +41,21 @@ $(BIN_DIR)/$(APP_NAME).bin: $(BIN_DIR)/$(APP_NAME).xe
 	xobjdump --strip --split --split-dir $(BIN_DIR)/splitdir $<
 	mv $(BIN_DIR)/splitdir/image_$(DYNAMIC_BIN_XE_SECTION).bin $@
 	rm -rf $(BIN_DIR)/splitdir
+
+ifeq ($(CONFIG),All)
+
+%.install: CONFIG0=$*
+%.install: BIN_DIR0=$(BASE_DIR)/bin/$(if $(filter Default,$*),,$*)
+
+%.install:
+	@$(MAKE) BIN_DIR=$(BIN_DIR0) CONFIG=$(CONFIG0) install
+
+install: $(foreach config,$(ALL_CONFIGS),$(config).install)
+
+else
+
+install: $(BIN_DIR)/$(APP_NAME).bin
+	install -d -m 0755 $(DESTDIR)/$(PREFIX)/share/sigrok-firmware
+	install -m 0644 $< $(DESTDIR)/$(PREFIX)/share/sigrok-firmware/xmos-la-$(CONFIG).fw
+
+endif
