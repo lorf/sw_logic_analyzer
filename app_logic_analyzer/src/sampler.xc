@@ -51,7 +51,7 @@ static inline void _sample_logic_4bit(buffered in port:8 a, buffered in port:8 b
 
 
 #pragma unsafe arrays
-static inline void _sample_logic_hi_4bit(buffered in port:8 a, buffered in port:8 b, buffered in port:8 c, buffered in port:8 d, streaming chanend sce_out) {
+static void _sample_logic_hi_4bit(buffered in port:8 a, buffered in port:8 b, buffered in port:8 c, buffered in port:8 d, streaming chanend sce_out) {
     while(1) {
         int h, l;
         _sample_logic_4bit(a, b, c, d, h, l);
@@ -64,7 +64,7 @@ static inline void _sample_logic_hi_4bit(buffered in port:8 a, buffered in port:
 
 
 #pragma unsafe arrays
-static inline void _sample_logic_low_4bit(buffered in port:8 a, buffered in port:8 b, buffered in port:8 c, buffered in port:8 d, streaming chanend sce_in, streaming chanend sce_out) {
+static void _sample_logic_low_4bit(buffered in port:8 a, buffered in port:8 b, buffered in port:8 c, buffered in port:8 d, streaming chanend sce_in, streaming chanend sce_out) {
     while(1) {
         int h, l, tmp;
         _sample_logic_4bit(a, b, c, d, h, l);
