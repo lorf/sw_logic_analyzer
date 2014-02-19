@@ -217,11 +217,11 @@ int main() {
     chan c_buf_usb_out_cmd;
     streaming chan sc_sampler2buf_xfer;
 
-    /* Set 25 MHz clock rate by default.
+    /* Set 1 MHz clock rate by default.
      * Clock rate is 100 MHz / (2 * div),
      * according to section 1.2 "Clock blocks"
      * of "Introduction to XS1 ports". */
-    configure_clock_ref(clk_sampling, 2);
+    configure_clock_ref(clk_sampling, 50);
 
     for (int i = 0; i < ARRAY_SIZE(sample_pins); i++) {
         set_port_pull_down(sample_pins[i]);
