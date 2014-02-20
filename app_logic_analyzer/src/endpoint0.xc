@@ -12,10 +12,17 @@
 
 #define DESC_STR_LANGID_USENG     0x0409 // US English
 
-#define VENDOR_ID   0x20b1
-#define DEVICE_ID   0x1061
+#define VENDOR_ID           0x20b1
+#if defined(TARGET_BOARD_XTAG2)
+#   define DEVICE_ID        0xf7d1
+#elif defined(TARGET_BOARD_STARTKIT)
+#   define DEVICE_ID        0xf7d3
+#else
+#   define DEVICE_ID        0x1061
+#endif
 /* Device release number */
-#define BCD_DEVICE  0x0100
+#define BCD_DEVICE          0x0001
+
 #define MANUFACTURER_STR    "XMOS"
 #if defined(TARGET_BOARD_XTAG2)
 #   define PRODUCT_STR      "XTAG-2 LA"
