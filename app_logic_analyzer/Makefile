@@ -56,6 +56,6 @@ else
 
 install: $(BIN_DIR)/$(APP_NAME).bin
 	install -d -m 0755 $(DESTDIR)/$(PREFIX)/share/sigrok-firmware
-	install -m 0644 $< $(DESTDIR)/$(PREFIX)/share/sigrok-firmware/xmos-la-$(CONFIG).fw
+	install -m 0644 $< $(DESTDIR)/$(PREFIX)/share/sigrok-firmware/xs1la-$(CONFIG).fw
 
 endif
