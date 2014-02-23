@@ -60,7 +60,7 @@ clock clk_sampling = XS1_CLKBLK_2;  /* Was XS1_CLKBLK_4, but it is used
  * top row all the way to pin 17. Use any of pins 4, 8, 12, 16, or 20 as
  * ground.
  */
-buffered in port:8 sample_pins[8] = {
+buffered in port:8 sample_pins[] = {
     /* Port order: LSB to MSB */
 
     XS1_PORT_1L, // Pin 3 on the connector
@@ -68,10 +68,12 @@ buffered in port:8 sample_pins[8] = {
     XS1_PORT_1C, // Pin 7 on the connector
     XS1_PORT_1D, // Pin 9 on the connector
 
+#if 0
     XS1_PORT_1K, // Pin 11 on the connector
     XS1_PORT_1B, // Pin 13 on the connector
     XS1_PORT_1M, // Pin 15 on the connector
     XS1_PORT_1J, // Pin 17 on the connector
+#endif
 };
 
 #elif defined(TARGET_BOARD_STARTKIT)
@@ -79,7 +81,7 @@ buffered in port:8 sample_pins[8] = {
 /*
  * These port declarations are specific to the startKIT.
  */
-buffered in port:8 sample_pins[8] = {
+buffered in port:8 sample_pins[] = {
     /* Port order: LSB to MSB */
 
     XS1_PORT_1A, // Pin CLK on J6
@@ -87,10 +89,12 @@ buffered in port:8 sample_pins[8] = {
     XS1_PORT_1C, // Pin DIG0 on J5
     XS1_PORT_1D, // Pin DIG1 on J5
 
+#if 0
     XS1_PORT_1E, // Pin I (#5) on TP1
     XS1_PORT_1F, // Pin S (#6) on TP1
     XS1_PORT_1G, // Pin K (#7) on TP1
     XS1_PORT_1L, // Pin O (#9) on TP1
+#endif
 };
 
 #else
@@ -217,19 +221,18 @@ int main() {
     chan c_buf_usb_out_cmd;
     streaming chan sc_sampler2buf_xfer;
 
-    /* Set 1 MHz clock rate by default.
-     * Clock rate is 100 MHz / (2 * div),
-     * according to section 1.2 "Clock blocks"
-     * of "Introduction to XS1 ports". */
-    configure_clock_ref(clk_sampling, 50);
+    sampler_init();
 
     for (int i = 0; i < ARRAY_SIZE(sample_pins); i++) {
         set_port_pull_down(sample_pins[i]);
         configure_in_port(sample_pins[i], clk_sampling);
     }
 
-    sampler_init();
-
+    /* Set 1 MHz clock rate by default.
+     * Clock rate is 100 MHz / (2 * div),
+     * according to section 1.2 "Clock blocks"
+     * of "Introduction to XS1 ports". */
+    configure_clock_ref(clk_sampling, 50);
     start_clock(clk_sampling);
 
     par {
@@ -249,7 +252,7 @@ int main() {
         buffer_thread(c_buf_usb_out_cmd, sc_sampler2buf_xfer);
         /* Sampler thread, output to buffer thread.
          * Starts another thread to sample 4 channels per thread in parallel. */
-        sampler_logic_8bit(sample_pins, sc_sampler2buf_xfer);
+        sampler_logic(sample_pins, sc_sampler2buf_xfer);
     }
 
     return 0;
