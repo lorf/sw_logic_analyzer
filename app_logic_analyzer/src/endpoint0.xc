@@ -10,6 +10,7 @@
 #include "uart_print.h"
 
 #include "read_serial_number.h"
+#include "xs1la.h"
 
 #define DESC_STR_LANGID_USENG     0x0409 // US English
 
@@ -81,7 +82,7 @@ static unsigned char cfgDesc[] =
     /* Configuration descriptor: */ 
     0x09,                               /* 0  bLength */ 
     USB_CONFIGURATION,                  /* 1  bDescriptorType */ 
-    0x27, 0x00,                         /* 2  wTotalLength */ 
+    0x19/*0x27*/, 0x00,                         /* 2  wTotalLength */ 
     0x01,                               /* 4  bNumInterface: Number of interfaces*/ 
     0x01,                               /* 5  bConfigurationValue */ 
     0x00,                               /* 6  iConfiguration */ 
@@ -93,12 +94,13 @@ static unsigned char cfgDesc[] =
     USB_INTERFACE,                      /* 1  bDescriptorType: INTERFACE */
     0x00,                               /* 2  bInterfaceNumber */
     0x00,                               /* 3  bAlternateSetting: Must be 0 */
-    0x03,                               /* 4  bNumEndpoints */
+    0x01/*0x03*/,                               /* 4  bNumEndpoints */
     0xff,                               /* 5  bInterfaceClass: VENDOR */
     0xff,                               /* 6  bInterfaceSubClass: VENDOR */
     0xff,                               /* 7  bInterfaceProtocol: VENDOR */
     0x00,                               /* 8  iInterface */ 
 
+#if 0
 /* Endpoint Descriptor (4.10.1.1): */
     0x07,                               /* 0  bLength: 7 */
     USB_ENDPOINT,                       /* 1  bDescriptorType: ENDPOINT */
@@ -114,17 +116,22 @@ static unsigned char cfgDesc[] =
     0x02,                               /* 3  bmAttributes: Bulk */
     0x00, 0x02,                         /* 4  wMaxPacketSize */
     0x00,                               /* 6  bInterval */
+#endif
 
 /* Endpoint Descriptor (4.10.1.1): */
     0x07,                               /* 0  bLength: 7 */
     USB_ENDPOINT,                       /* 1  bDescriptorType: ENDPOINT */
-    0x82,                               /* 2  bEndpointAddress (D7: 0:out, 1:in) */
+    0x81/*0x82*/,                       /* 2  bEndpointAddress (D7: 0:out, 1:in) */
     0x02,                               /* 3  bmAttributes: Bulk */
     0x00, 0x02,                         /* 4  wMaxPacketSize */
     0x00,                               /* 6  bInterval */
 };
 
-void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test)
+/*
+ * TODO:
+ *  - Start/stop sampling commands.
+ */
+void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test, clock clk_sampling)
 {
     unsigned char buffer[1024];
     USB_SetupPacket_t sp;
@@ -158,7 +165,7 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test)
                         /* Set Interface */
                     case USB_SET_INTERFACE:
                         /* TODO: Set the interface */
-                        /* No data stage for this request, just do data stage */
+                        /* No data stage for this request, just do status stage */
                         retVal = XUD_DoSetRequestStatus(ep0_in);
                         break;
                         /* Get descriptor */ 
@@ -207,6 +214,34 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test)
                         retVal = XUD_DoGetRequest(ep0_out, ep0_in, buffer,  2, sp.wLength);
                         break;
                     }  
+                    break;
+                }
+                break;
+            case USB_BM_REQTYPE_TYPE_VENDOR:
+                switch(sp.bRequest) {
+                case XS1LA_CMD_SET_CONFIG:
+                    printf("Received set config request\r\n");
+                    retVal = XUD_GetBuffer(ep0_out, buffer);
+                    if (retVal >= 0) {
+                        unsigned char divider, sample_width;
+
+                        divider = buffer[0];
+                        sample_width = buffer[1];
+
+                        printf("Divider %d, sample_width %d\r\n", divider, sample_width);
+
+                        /* Configure clock with the divider.
+                         * Clock rate is 100 MHz / (2 * div),
+                         * according to section 1.2 "Clock blocks"
+                         * of "Introduction to XS1 ports". */
+                        stop_clock(clk_sampling);
+                        configure_clock_ref(clk_sampling, divider);
+                        start_clock(clk_sampling);
+
+                        retVal = XUD_DoSetRequestStatus(ep0_in);
+
+                        printf("Configured clock\r\n");
+                    }
                     break;
                 }
                 break;

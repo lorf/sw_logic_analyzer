@@ -19,20 +19,18 @@
 
 #define USB_HOST_BUF_LEN    512
 
-#define XMOSSK_LA_IMPL
-#include "xmossk_la.h"
+#define XS1LA_IMPL
+#include "xs1la.h"
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof(a[0]))
 
 
 /* Endpoint type tables */
-XUD_EpType epTypeTableOut[2] =   {XUD_EPTYPE_CTL, 
-                                  XUD_EPTYPE_BUL, 
+XUD_EpType epTypeTableOut[1] =   {XUD_EPTYPE_CTL | XUD_STATUS_ENABLE,
 }; 
 
-XUD_EpType epTypeTableIn[3] = {   XUD_EPTYPE_CTL,
-                                  XUD_EPTYPE_BUL, 
-                                  XUD_EPTYPE_BUL,
+XUD_EpType epTypeTableIn[2] = {   XUD_EPTYPE_CTL | XUD_STATUS_ENABLE,
+                                  XUD_EPTYPE_BUL | XUD_STATUS_ENABLE,
 };
 
 /* USB Port declarations */
@@ -150,7 +148,7 @@ void buffer_thread(chanend ce_xfer_thread, streaming chanend sce_sampler) {
     }
 }
 
-void endpoint2_usb_out(chanend ce_to_host, chanend ce_cmd) {
+void ep_data_out(chanend ce_to_host, chanend ce_cmd) {
     unsigned char buf_num;
     int datalength;
 
@@ -172,6 +170,7 @@ void endpoint2_usb_out(chanend ce_to_host, chanend ce_cmd) {
     }
 }
 
+#if 0
 /*
  * TODO:
  *  - Start/stop sampling commands.
@@ -179,7 +178,7 @@ void endpoint2_usb_out(chanend ce_to_host, chanend ce_cmd) {
 void endpoint1_cmd(chanend ce_from_host, chanend ce_to_host, clock clk_sampling) {
     /* XXX: do we need whole 512 bytes buffer? */
     unsigned char buffer[USB_HOST_BUF_LEN];
-    int div;
+    unsigned char div, sample_width;
 
     XUD_ep ep_from_host = XUD_InitEp(ce_from_host);
     XUD_ep ep_to_host = XUD_InitEp(ce_to_host);
@@ -188,16 +187,18 @@ void endpoint1_cmd(chanend ce_from_host, chanend ce_to_host, clock clk_sampling)
         int datalength = XUD_GetBuffer(ep_from_host, buffer);
         if (datalength > 0) {
             switch(buffer[0]) {
-            case XMOSSK_LA_CMD_SET_CLOCK_DIVIDER:
+            case XS1LA_CMD_SET_CONFIG:
+                div = buffer[1];
+                sample_width = buffer[2];
+
                 /* Configure clock with the divider.
                  * Clock rate is 100 MHz / (2 * div),
                  * according to section 1.2 "Clock blocks"
                  * of "Introduction to XS1 ports". */
-                /* XXX: div is 8 bit, remove unnecessary byte */
-                div = buffer[1] | buffer[2]<<8;
                 stop_clock(clk_sampling);
                 configure_clock_ref(clk_sampling, div);
                 start_clock(clk_sampling);
+
                 datalength = 0;
                 break;
             default:        // unknown command, ignore without ack
@@ -215,12 +216,13 @@ void endpoint1_cmd(chanend ce_from_host, chanend ce_to_host, clock clk_sampling)
         }
     }
 }
+#endif
 
 out port uart_print_tx_port = on tile[0] : XS1_PORT_1G; /* TCK, TP1 pin 7 (K) */
 
 int main() {
-    chan c_ep_out[2];
-    chan c_ep_in[3];
+    chan c_ep_out[1];
+    chan c_ep_in[2];
     chan c_buf_usb_out_cmd;
     streaming chan sc_sampler2buf_xfer;
 
@@ -242,17 +244,17 @@ int main() {
 
     par {
         /* USB manager thread */
-        XUD_Manager( c_ep_out, 2, c_ep_in, 3,
+        XUD_Manager(c_ep_out, 1, c_ep_in, 2,
                      null, epTypeTableOut, epTypeTableIn,
                      p_usb_rst, clk_usb_rst, -1, XUD_SPEED_HS, null,
                      XUD_PWR_BUS);
         /* Generic endpoint 0 thread, USB config */
-        Endpoint0( c_ep_out[0], c_ep_in[0], null);
+        Endpoint0( c_ep_out[0], c_ep_in[0], null, clk_sampling);
         /* Get commands from USB */
-        endpoint1_cmd(c_ep_out[1], c_ep_in[1], clk_sampling);
+        /*endpoint1_cmd(c_ep_out[1], c_ep_in[1], clk_sampling);*/
         /* USB output thread. Buffers, shared with buffer thread,
          * are transferred to the host via USB */
-        endpoint2_usb_out(c_ep_in[2], c_buf_usb_out_cmd);
+        ep_data_out(c_ep_in[1], c_buf_usb_out_cmd);
         /* Read from sampler thread, add to a buffer shared with transfer thread */
         buffer_thread(c_buf_usb_out_cmd, sc_sampler2buf_xfer);
         /* Sampler thread, output to buffer thread.
