@@ -9,9 +9,10 @@
 #include <xclib.h>
 #include <print.h>
 #include <stdio.h>
-
 #include "xud.h"
 #include "usb.h"
+#include "uart_print.h"
+
 #include "sampler.h"
 #include "endpoint0.h"
 #include "shared_buffer.h"
