@@ -7,23 +7,29 @@
 #include <platform.h>
 #include <xs1.h>
 #include <xclib.h>
-#include <print.h>
 #include <stdio.h>
 #include "xud.h"
 #include "usb.h"
+#ifdef DEBUG
 #include "uart_print.h"
+#endif
 
 #include "sampler.h"
 #include "endpoint0.h"
 #include "shared_buffer.h"
-
-#define USB_HOST_BUF_LEN    512
 
 #define XS1LA_IMPL
 #include "xs1la.h"
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof(a[0]))
 
+#ifdef DEBUG
+#define DEBUG_PRINTF(...)   printf(__VA_ARGS__);
+#else
+#define DEBUG_PRINTF(...)   /* Empty */
+#endif
+
+#define USB_HOST_BUF_LEN    512
 
 /* Endpoint type tables */
 XUD_EpType epTypeTableOut[1] =   {XUD_EPTYPE_CTL | XUD_STATUS_ENABLE,
@@ -218,7 +224,9 @@ void endpoint1_cmd(chanend ce_from_host, chanend ce_to_host, clock clk_sampling)
 }
 #endif
 
+#ifdef DEBUG
 out port uart_print_tx_port = on tile[0] : XS1_PORT_1G; /* TCK, TP1 pin 7 (K) */
+#endif
 
 int main() {
     chan c_ep_out[1];
@@ -226,7 +234,9 @@ int main() {
     chan c_buf_usb_out_cmd;
     streaming chan sc_sampler2buf_xfer;
 
+#ifdef DEBUG
     uart_print_init(115200);
+#endif
 
     sampler_init();
 

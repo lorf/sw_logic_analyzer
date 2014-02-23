@@ -1,8 +1,14 @@
 APP_NAME = app_logic_analyzer
-USED_MODULES = module_usb_device module_usb_shared module_xud module_locks module_uart_print
+USED_MODULES = module_usb_device module_usb_shared module_xud
 VERBOSE = 0
+DEBUG_BUILD ?= 1
 
-COMMON_XCC_FLAGS = -Wall -O2 -g
+COMMON_XCC_FLAGS += -Wall -O2 -g
+
+ifeq ($(DEBUG_BUILD),1)
+COMMON_XCC_FLAGS += -DDEBUG
+USED_MODULES += module_locks module_uart_print
+endif
 
 XCC_FLAGS_xtag2 = $(COMMON_XCC_FLAGS) -DTARGET_BOARD_XTAG2
 

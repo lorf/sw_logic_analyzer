@@ -7,10 +7,18 @@
 #include <xs1.h>
 #include <safestring.h>
 #include "usb_device.h"
+#ifdef DEBUG
 #include "uart_print.h"
+#endif
 
 #include "read_serial_number.h"
 #include "xs1la.h"
+
+#ifdef DEBUG
+#define DEBUG_PRINTF(...)   printf(__VA_ARGS__);
+#else
+#define DEBUG_PRINTF(...)   /* Empty */
+#endif
 
 #define DESC_STR_LANGID_USENG     0x0409 // US English
 
@@ -143,7 +151,7 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test, clock 
     /* Read serial number from OTP */
     read_serial_number(strDescs[SERIAL_STR_IDX], sizeof(strDescs[SERIAL_STR_IDX]));
 
-    printf("In endpoint 0, serial # %s\r\n", strDescs[SERIAL_STR_IDX]);
+    DEBUG_PRINTF("In endpoint 0, serial # %s\r\n", strDescs[SERIAL_STR_IDX]);
 
     while(1)
     {
@@ -220,7 +228,7 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test, clock 
             case USB_BM_REQTYPE_TYPE_VENDOR:
                 switch(sp.bRequest) {
                 case XS1LA_CMD_SET_CONFIG:
-                    printf("Received set config request\r\n");
+                    DEBUG_PRINTF("Received set config request\r\n");
                     retVal = XUD_GetBuffer(ep0_out, buffer);
                     if (retVal >= 0) {
                         unsigned char divider, sample_width;
@@ -228,7 +236,7 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test, clock 
                         divider = buffer[0];
                         sample_width = buffer[1];
 
-                        printf("Divider %d, sample_width %d\r\n", divider, sample_width);
+                        DEBUG_PRINTF("Divider %d, sample_width %d\r\n", divider, sample_width);
 
                         /* Configure clock with the divider.
                          * Clock rate is 100 MHz / (2 * div),
@@ -240,7 +248,7 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test, clock 
 
                         retVal = XUD_DoSetRequestStatus(ep0_in);
 
-                        printf("Configured clock\r\n");
+                        DEBUG_PRINTF("Configured clock\r\n");
                     }
                     break;
                 }
