@@ -5,9 +5,10 @@
 
 
 #include <xs1.h>
-#include <print.h>
 #include <safestring.h>
 #include "usb_device.h"
+#include "uart_print.h"
+
 #include "read_serial_number.h"
 
 #define DESC_STR_LANGID_USENG     0x0409 // US English
@@ -134,6 +135,8 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test)
 
     /* Read serial number from OTP */
     read_serial_number(strDescs[SERIAL_STR_IDX], sizeof(strDescs[SERIAL_STR_IDX]));
+
+    printf("In endpoint 0, serial # %s\r\n", strDescs[SERIAL_STR_IDX]);
 
     while(1)
     {

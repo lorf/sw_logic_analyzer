@@ -1,5 +1,5 @@
 APP_NAME = app_logic_analyzer
-USED_MODULES = module_usb_device module_usb_shared module_xud
+USED_MODULES = module_usb_device module_usb_shared module_xud module_locks module_uart_print
 VERBOSE = 0
 
 COMMON_XCC_FLAGS = -Wall -O2 -g

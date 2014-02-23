@@ -215,11 +215,15 @@ void endpoint1_cmd(chanend ce_from_host, chanend ce_to_host, clock clk_sampling)
     }
 }
 
+out port uart_print_tx_port = on tile[0] : XS1_PORT_1G; /* TCK, TP1 pin 7 (K) */
+
 int main() {
     chan c_ep_out[2];
     chan c_ep_in[3];
     chan c_buf_usb_out_cmd;
     streaming chan sc_sampler2buf_xfer;
+
+    uart_print_init(115200);
 
     sampler_init();
 
