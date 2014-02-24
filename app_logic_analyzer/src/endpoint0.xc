@@ -12,6 +12,8 @@
 #endif
 
 #include "read_serial_number.h"
+
+#define _XS1LA_IMPL
 #include "xs1la.h"
 
 #ifdef DEBUG
@@ -77,8 +79,8 @@ static unsigned char devDesc[] =
     (VENDOR_ID >> 8),       /* 9  idVendor */
     (DEVICE_ID & 0xff),     /* 10 idProduct */
     (DEVICE_ID >> 8),       /* 11 idProduct */
-    (BCD_DEVICE & 0xff),    /* 12 bcdDevice : Device release number */
-    (BCD_DEVICE >> 8),      /* 13 bcdDevice : Device release number */
+    VERSION_MINOR,          /* 12 bcdDevice : Device release number */
+    VERSION_MAJOR,          /* 13 bcdDevice : Device release number */
     MANUFACTURER_STR_IDX,   /* 14 iManufacturer : Index of manufacturer string */
     PRODUCT_STR_IDX,        /* 15 iProduct : Index of product string descriptor */
     SERIAL_STR_IDX,         /* 16 iSerialNumber : Index of serial number decriptor */
@@ -250,6 +252,22 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test, clock 
 
                         DEBUG_PRINTF("Configured clock\r\n");
                     }
+                    break;
+                case XS1LA_CMD_GET_FWINFO:
+                    DEBUG_PRINTF("Received get fwinfo request\r\n");
+
+                    buffer[0] = VERSION_MAJOR;
+                    buffer[1] = VERSION_MINOR;
+
+                    retVal = XUD_DoGetRequest(ep0_out, ep0_in, buffer,  2, sp.wLength);
+                    break;
+                case XS1LA_CMD_GET_HWINFO:
+                    DEBUG_PRINTF("Received get hwinfo request\r\n");
+
+                    buffer[0] = HWINFO_BOARD;
+                    buffer[1] = HWINFO_REVISION;
+
+                    retVal = XUD_DoGetRequest(ep0_out, ep0_in, buffer,  2, sp.wLength);
                     break;
                 }
                 break;

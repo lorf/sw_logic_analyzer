@@ -18,7 +18,7 @@
 #include "endpoint0.h"
 #include "shared_buffer.h"
 
-#define XS1LA_IMPL
+#define _XS1LA_IMPL
 #include "xs1la.h"
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof(a[0]))
