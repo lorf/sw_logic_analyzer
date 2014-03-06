@@ -3,6 +3,14 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
+/*
+ * Read serial number from OTP. Protocol is described in
+ * "USB Bootloader Description and Standards":
+ *   https://www.xmos.com/en/published/usbboot
+ * Implementation from
+ *   https://github.com/xcore/proj_xtag2/blob/master/app_l1_usb_loader/src/otp.xc
+ */
+
 #include <xs1.h>
 #include <print.h>
 
@@ -72,12 +80,10 @@ int read_serial_number(unsigned char x[], unsigned int size) {
         x[16] = '\0';
         return 0;
     } else {
-#if 0
-        (x,unsigned int[4])[0] = 
-            (x,unsigned int[4])[1] =
-            (x,unsigned int[4])[2] = 
-            (x,unsigned int[4])[3] = 0x58585858;
-#endif
+        (x,unsigned int[4])[0] = 0x58585858;
+        (x,unsigned int[4])[1] = 0x58585858;
+        (x,unsigned int[4])[2] = 0x58585858;
+        (x,unsigned int[4])[3] = 0x58585858;
         return -1;
     }
 }
