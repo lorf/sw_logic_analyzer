@@ -1,13 +1,19 @@
 #include <xs1.h>
+#include "uart_print.h"
+#ifdef OSCILL
+#include "usb_tile_support.h"
+#endif
 
 /*
  * TODO:
- *  - Don't demangle bits on device, pass mangled data to a host;
+ *  - Don't reorder bits on device, pass data for reorder on a host;
  *  - Sync input ports to the rising edge of the clock,
  *    so they are sampled in the same clock cycle. See chapter 5
  *    "Port Buffering" in "XC Programming Guide" (X1009B).
  */
 
+/* These lookup tables are used to change order of bits in a byte we got from
+ * buffered port input.*/
 static int _lookup_8bit_low[256];
 static int _lookup_8bit_hi[256];
 
@@ -138,4 +144,84 @@ void sampler_logic(buffered in port:8 p[], streaming chanend sce_out) {
     _sample_logic_4bit(p[3], p[2], p[1], p[0], sce_out);
 
    /*_sample_logic_1bit(p[7], sce_out);*/
+}
+
+#ifdef OSCILL
+
+#ifdef DEBUG
+//#define DEBUG_OSCILL
+#endif
+
+#define OSCILL_PERIOD   (XS1_TIMER_HZ / 10000)
+#ifdef DEBUG_OSCILL
+#define PRINT_PERIOD    (XS1_TIMER_HZ / 100)
+#endif
+
+#pragma unsafe arrays
+void sampler_oscill(const_adc_config_ref_t adc_config, out port p_adc_trigger, chanend c_adc, streaming chanend sce_out)
+{
+    unsigned int data[4];
+    unsigned int value;
+#if 0
+    unsigned adc_time;
+    timer t_adc;
+#endif
+#ifdef DEBUG_OSCILL
+    unsigned print_time;
+    timer t_print;
+#endif
+
+#if 0
+    t_adc :> adc_time;
+    adc_time += OSCILL_PERIOD;
+#endif
+#ifdef DEBUG_OSCILL
+    t_print :> print_time;
+    print_time += PRINT_PERIOD;
+#endif
+    while(1) {
+        select {
+#if 0
+        case t_adc when timerafter(adc_time) :> void:
+            adc_trigger_packet(p_adc_trigger, adc_config);
+            adc_time += OSCILL_PERIOD;
+            break;
+#endif
+
+        case adc_read_packet(c_adc, adc_config, data):
+            value = data[0];
+            value |= data[1] << 8;
+            value |= data[2] << 16;
+            value |= data[3] << 24;
+            sce_out <: value;
+            break;
+
+#ifdef DEBUG_OSCILL
+        case t_print when timerafter(print_time) :> void:
+            print_time += PRINT_PERIOD;
+            {
+                char str[] = "|                                |\r\n";
+                static unsigned int prev_val = 0;
+                unsigned int val;
+
+                val = data[3] >> 3;
+                str[1 + prev_val] = ' ';
+                str[1 + val] = '*';
+                prev_val = val;
+                printstr(str);
+            }
+            break;
+#endif
+        }
+    }
+}
+#endif  /* OSCILL */
+
+void sampler(buffered in port:8 p[], const_adc_config_ref_t adc_config, out port p_adc_trigger, chanend c_adc, streaming chanend sce_out)
+{
+#ifdef OSCILL
+    sampler_oscill(adc_config, p_adc_trigger, c_adc, sce_out);
+#else
+    sampler_logic(p[], sce_out);
+#endif
 }

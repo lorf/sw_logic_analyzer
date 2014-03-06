@@ -2,6 +2,7 @@ APP_NAME = app_logic_analyzer
 USED_MODULES = module_usb_device module_usb_shared module_xud
 VERBOSE = 0
 DEBUG_BUILD ?= 1
+OSCILL ?= 1
 
 COMMON_XCC_FLAGS += -Wall -O2 -g
 
@@ -23,6 +24,10 @@ endif
 XCC_FLAGS_startkit = $(COMMON_XCC_FLAGS) -DTARGET_BOARD_STARTKIT -DXUD_SERIES_SUPPORT=XUD_U_SERIES
 
 ifeq ($(CONFIG), startkit) 
+ifeq ($(OSCILL), 1)
+	COMMON_XCC_FLAGS += -DOSCILL
+	USED_MODULES += module_usb_tile_support
+endif
 	TARGET = XS1-U8A-64-FB96-C5
 	#TARGET = XS1-U16A-128-FB217-C10
 	# Use XUD library for U-series controllers

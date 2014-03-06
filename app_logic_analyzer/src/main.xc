@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include "xud.h"
 #include "usb.h"
+#ifdef OSCILL
+#include "usb_tile_support.h"
+#endif
 #ifdef DEBUG
 #include "uart_print.h"
 #endif
@@ -68,7 +71,7 @@ clock clk_sampling = XS1_CLKBLK_2;  /* Was XS1_CLKBLK_4, but it is used
  * top row all the way to pin 17. Use any of pins 4, 8, 12, 16, or 20 as
  * ground.
  */
-buffered in port:8 sample_pins[] = {
+buffered in port:8 logic_sample_pins[] = {
     /* Port order: LSB to MSB */
 
     XS1_PORT_1L, // Pin 3 on the connector
@@ -85,11 +88,30 @@ buffered in port:8 sample_pins[] = {
 };
 
 #elif defined(TARGET_BOARD_STARTKIT)
-
 /*
  * These port declarations are specific to the startKIT.
  */
-buffered in port:8 sample_pins[] = {
+
+#ifdef OSCILL
+/*
+ * ADC description in "XS1 U16A 128 FB217 Datasheet" (X1110G),
+ * Chapter 12 "Analog-to-Digital Converter" and Appendix G "ADC Configuration".
+ * Definitions in xs1_su_registers.h.
+ * Examples:
+ *   http://www.xcore.com/questions/2196/how-use-adcs-startkit
+ *   http://www.xcore.com/forum/viewtopic.php?f=44&t=2537
+ *   https://github.com/xcore/sc_u_series_support/tree/master/app_adc_demo_u
+ */
+/*
+ * Port XS1_PORT_1I on tile[0] (debug tile) is internally connected to ADC
+ * sample trigger port.  Port XS1_PORT_1A on tile[1] (app tile) is connected on
+ * startKIT board to ADC sample trigger pin (X0D24, XS1_PORT_1I on tile[0]) and
+ * may also be used to trigger ADC sampling.
+ */
+on tile[0] : out port p_adc_trigger = PORT_ADC_TRIGGER;   /* ADC sampling port */
+#endif
+
+on tile[0] : buffered in port:8 logic_sample_pins[] = {
     /* Port order: LSB to MSB */
 
     XS1_PORT_1A, // Pin CLK on J6
@@ -231,51 +253,77 @@ void endpoint1_cmd(chanend ce_from_host, chanend ce_to_host, clock clk_sampling)
 }
 #endif
 
-#ifdef DEBUG
-#endif
-
 int main() {
-    chan c_ep_out[1];
-    chan c_ep_in[2];
-    chan c_buf_usb_out_cmd;
-    streaming chan sc_sampler2buf_xfer;
-
-#ifdef DEBUG
-    uart_print_init(115200);
+    chan c_adc;
+    par {
+        on tile[0] : {
+            chan c_ep_out[1];
+            chan c_ep_in[2];
+            chan c_buf_usb_out_cmd;
+            streaming chan sc_sampler2buf_xfer;
+#ifdef OSCILL
+            adc_config_t adc_config = { { 0, 0, 0, 0, 0, 0, 0, 0 }, 0, 0, 0 };
 #endif
 
-    sampler_init();
+#ifdef DEBUG
+            uart_print_init(115200);
+#endif
 
-    for (int i = 0; i < ARRAY_SIZE(sample_pins); i++) {
-        set_port_pull_down(sample_pins[i]);
-        configure_in_port(sample_pins[i], clk_sampling);
-    }
+            sampler_init();
 
-    /* Set 1 MHz clock rate by default.
-     * Clock rate is 100 MHz / (2 * div),
-     * according to section 1.2 "Clock blocks"
-     * of "Introduction to XS1 ports". */
-    configure_clock_ref(clk_sampling, 50);
-    start_clock(clk_sampling);
+#ifdef OSCILL
+            adc_config.input_enable[0] = 1;
+#if 0
+            adc_config.input_enable[1] = 1;
+            adc_config.input_enable[2] = 1;
+            adc_config.input_enable[3] = 1;
+#endif
+            adc_config.bits_per_sample = ADC_8_BPS; /* Limit to 8 bit for now */
+            adc_config.samples_per_packet = 4/*XS1_MAX_SAMPLES_PER_PACKET*/;
 
-    par {
-        /* USB manager thread */
-        XUD_Manager(c_ep_out, 1, c_ep_in, 2,
-                     null, epTypeTableOut, epTypeTableIn,
-                     p_usb_rst, clk_usb_rst, -1, XUD_SPEED_HS, null,
-                     XUD_PWR_BUS);
-        /* Generic endpoint 0 thread, USB config */
-        Endpoint0( c_ep_out[0], c_ep_in[0], null, clk_sampling);
-        /* Get commands from USB */
-        /*endpoint1_cmd(c_ep_out[1], c_ep_in[1], clk_sampling);*/
-        /* USB output thread. Buffers, shared with buffer thread,
-         * are transferred to the host via USB */
-        ep_data_out(c_ep_in[1], c_buf_usb_out_cmd);
-        /* Read from sampler thread, add to a buffer shared with transfer thread */
-        buffer_thread(c_buf_usb_out_cmd, sc_sampler2buf_xfer);
-        /* Sampler thread, output to buffer thread.
-         * Starts another thread to sample 4 channels per thread in parallel. */
-        sampler_logic(sample_pins, sc_sampler2buf_xfer);
+            adc_enable(usb_tile, c_adc, p_adc_trigger, adc_config);
+
+            configure_port_clock_output(p_adc_trigger, clk_sampling);
+#endif
+
+            for (int i = 0; i < ARRAY_SIZE(logic_sample_pins); i++) {
+                set_port_pull_down(logic_sample_pins[i]);
+                configure_in_port(logic_sample_pins[i], clk_sampling);
+            }
+
+            /* Set 1 MHz clock rate by default.
+            * Clock rate is 100 MHz / (2 * div),
+            * according to section 1.2 "Clock blocks"
+            * of "Introduction to XS1 ports". */
+            configure_clock_ref(clk_sampling, 50);
+            start_clock(clk_sampling);
+
+            par {
+                /* USB manager thread */
+                XUD_Manager(c_ep_out, 1, c_ep_in, 2,
+                            null, epTypeTableOut, epTypeTableIn,
+                            p_usb_rst, clk_usb_rst, -1, XUD_SPEED_HS, null,
+                            XUD_PWR_BUS);
+                /* Generic endpoint 0 thread, USB config */
+                Endpoint0( c_ep_out[0], c_ep_in[0], null, clk_sampling);
+                /* Get commands from USB */
+                /*endpoint1_cmd(c_ep_out[1], c_ep_in[1], clk_sampling);*/
+                /* USB output thread. Buffers, shared with buffer thread,
+                * are transferred to the host via USB */
+                ep_data_out(c_ep_in[1], c_buf_usb_out_cmd);
+                /* Read from sampler thread, add to a buffer shared with transfer thread */
+                buffer_thread(c_buf_usb_out_cmd, sc_sampler2buf_xfer);
+                /* Sampler thread, output to buffer thread. */
+                sampler(logic_sample_pins, adc_config, p_adc_trigger, c_adc, sc_sampler2buf_xfer);
+#if 0
+                /* Starts another thread to sample 4 channels per thread in parallel. */
+                sampler_logic(logic_sample_pins, sc_sampler2buf_xfer);
+#endif
+            }
+        }
+#ifdef OSCILL
+        xs1_su_adc_service(c_adc);
+#endif
     }
 
     return 0;
