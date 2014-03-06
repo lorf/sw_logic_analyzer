@@ -15,7 +15,10 @@
              https://www.xmos.com/en/published/scusbdevicezip .
              This is needed to compile with recent module_xud from
              the same zip. Not tested on the real HW. -->
+        <!-- Otherwise just define macro XUD_SERIES_SUPPORT=XUD_L_SERIES
+             and xud.h would pick right ports. -->
         <!-- XUD Ports -->
+        <!--
         <Port Location="XS1_PORT_1H"  Name="PORT_USB_CLK"/>
         <Port Location="XS1_PORT_1N"  Name="PORT_USB_FLAG0"/>
         <Port Location="XS1_PORT_1O"  Name="PORT_USB_FLAG1"/>
@@ -24,6 +27,7 @@
         <Port Location="XS1_PORT_8B"  Name="PORT_USB_RXD"/>
         <Port Location="XS1_PORT_8C"  Name="PORT_USB_REG_WRITE"/>
         <Port Location="XS1_PORT_8D"  Name="PORT_USB_REG_READ"/>
+        -->
       </Tile>
     </Node>
   </Nodes>
