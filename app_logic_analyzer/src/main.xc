@@ -24,7 +24,10 @@
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof(a[0]))
 
 #ifdef DEBUG
-#define DEBUG_PRINTF(...)   printf(__VA_ARGS__);
+#define DEBUG_PRINTF(...)   do { \
+        printf("%s:%d: ", __FILE__, __LINE__); \
+        printf(__VA_ARGS__); \
+    } while (0)
 #else
 #define DEBUG_PRINTF(...)   /* Empty */
 #endif
@@ -106,6 +109,10 @@ buffered in port:8 sample_pins[] = {
 #error "You need to define a target"
 #endif
 
+
+#ifdef DEBUG
+out port uart_print_tx_port = on tile[0] : XS1_PORT_1G; /* TCK, TP1 pin 7 (K) */
+#endif
 
 #pragma unsafe arrays
 void buffer_thread(chanend ce_xfer_thread, streaming chanend sce_sampler) {
@@ -225,7 +232,6 @@ void endpoint1_cmd(chanend ce_from_host, chanend ce_to_host, clock clk_sampling)
 #endif
 
 #ifdef DEBUG
-out port uart_print_tx_port = on tile[0] : XS1_PORT_1G; /* TCK, TP1 pin 7 (K) */
 #endif
 
 int main() {

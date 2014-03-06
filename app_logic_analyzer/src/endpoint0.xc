@@ -17,7 +17,10 @@
 #include "xs1la.h"
 
 #ifdef DEBUG
-#define DEBUG_PRINTF(...)   printf(__VA_ARGS__);
+#define DEBUG_PRINTF(...)   do { \
+        printf("%s:%d: ", __FILE__, __LINE__); \
+        printf(__VA_ARGS__); \
+    } while (0)
 #else
 #define DEBUG_PRINTF(...)   /* Empty */
 #endif
@@ -153,7 +156,7 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test, clock 
     /* Read serial number from OTP */
     read_serial_number(strDescs[SERIAL_STR_IDX], sizeof(strDescs[SERIAL_STR_IDX]));
 
-    DEBUG_PRINTF("In endpoint 0, serial # %s\r\n", strDescs[SERIAL_STR_IDX]);
+    DEBUG_PRINTF("endpoint 0, serial# %s\r\n", strDescs[SERIAL_STR_IDX]);
 
     while(1)
     {
@@ -230,15 +233,12 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test, clock 
             case USB_BM_REQTYPE_TYPE_VENDOR:
                 switch(sp.bRequest) {
                 case XS1LA_CMD_SET_CONFIG:
-                    DEBUG_PRINTF("Received set config request\r\n");
                     retVal = XUD_GetBuffer(ep0_out, buffer);
                     if (retVal >= 0) {
-                        unsigned char divider, sample_width;
+                        unsigned char divider, sample_bit_width;
 
                         divider = buffer[0];
-                        sample_width = buffer[1];
-
-                        DEBUG_PRINTF("Divider %d, sample_width %d\r\n", divider, sample_width);
+                        sample_bit_width = buffer[1];
 
                         /* Configure clock with the divider.
                          * Clock rate is 100 MHz / (2 * div),
@@ -250,24 +250,31 @@ void Endpoint0( chanend c_ep0_out, chanend c_ep0_in, chanend ?c_usb_test, clock 
 
                         retVal = XUD_DoSetRequestStatus(ep0_in);
 
-                        DEBUG_PRINTF("Configured clock\r\n");
+                        DEBUG_PRINTF("CMD_SET_CONFIG: sampling clock: "
+                            "divider %d, freq %d, sample_bit_width %d\r\n",
+                            divider, 50000000 / divider, sample_bit_width);
                     }
                     break;
                 case XS1LA_CMD_GET_FWINFO:
-                    DEBUG_PRINTF("Received get fwinfo request\r\n");
+                    DEBUG_PRINTF("CMD_GET_FWINFO: fw version %d.%d\r\n",
+                        VERSION_MAJOR, VERSION_MINOR);
 
                     buffer[0] = VERSION_MAJOR;
                     buffer[1] = VERSION_MINOR;
 
-                    retVal = XUD_DoGetRequest(ep0_out, ep0_in, buffer,  2, sp.wLength);
+                    retVal = XUD_DoGetRequest(ep0_out, ep0_in,
+                        buffer, 2, sp.wLength);
+
                     break;
                 case XS1LA_CMD_GET_HWINFO:
-                    DEBUG_PRINTF("Received get hwinfo request\r\n");
+                    DEBUG_PRINTF("CMD_GET_HWINFO: board %d, revision %d\r\n",
+                        HWINFO_BOARD, HWINFO_REVISION);
 
                     buffer[0] = HWINFO_BOARD;
                     buffer[1] = HWINFO_REVISION;
 
-                    retVal = XUD_DoGetRequest(ep0_out, ep0_in, buffer,  2, sp.wLength);
+                    retVal = XUD_DoGetRequest(ep0_out, ep0_in,
+                        buffer, 2, sp.wLength);
                     break;
                 }
                 break;
